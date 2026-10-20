@@ -1,0 +1,125 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Build Android App (APK)
+      run: |
+        echo "Creating lightweight Android structure..."
+        mkdir -p app/src/main/java/com/roomscanner/vr
+        mkdir -p app/src/main/res/values
+        
+        # สร้าง Android Manifest สำหรับ Meta Quest 3S
+        cat << 'EOF' > app/src/main/AndroidManifest.xml
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+            package="com.roomscanner.vr">
+            <uses-permission android:name="android.permission.INTERNET" />
+            <uses-permission android:name="android.permission.CAMERA" />
+            <application
+                android:label="RoomScannerVR"
+                android:icon="@mipmap/ic_launcher"
+                android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+                <activity
+                    android:name=".MainActivity"
+                    android:exported="true">
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                    </intent-filter>
+                </activity>
+            </application>
+        </manifest>
+        EOF
+
+        # สร้างไฟล์ควบคุมแอป (Main Activity)
+        cat << 'EOF' > app/src/main/java/com/roomscanner/vr/MainActivity.kt
+        package com.roomscanner.vr
+        import android.os.Bundle
+        import android.webkit.WebView
+        import android.webkit.WebViewClient
+        import android.app.Activity
+
+        class MainActivity : Activity() {
+            override fun onCreate(savedInstanceState: Bundle?) {
+                super.onCreate(savedInstanceState)
+                val webView = WebView(this)
+                webView.settings.javaScriptEnabled = true
+                webView.settings.domStorageEnabled = true
+                webView.webViewClient = WebViewClient()
+                webView.loadUrl("https://immersiveweb.dev") 
+                setContentView(webView)
+            }
+        }
+        EOF
+
+        # สร้างไฟล์ Build Gradle
+        cat << 'EOF' > build.gradle
+        buildscript {
+            repositories {
+                google()
+                mavenCentral()
+            }
+            dependencies {
+                classpath 'com.android.tools.build:gradle:8.1.0'
+            }
+        }
+        allprojects {
+            repositories {
+                google()
+                mavenCentral()
+            }
+        }
+        EOF
+
+        cat << 'EOF' > settings.gradle
+        rootProject.name = "RoomScannerVR"
+        include ':app'
+        EOF
+
+        cat << 'EOF' > app/build.gradle
+        plugins {
+            id 'com.android.application'
+            id 'org.jetbrains.kotlin.android' version '1.9.0' apply false
+        }
+        apply plugin: 'com.android.application'
+        android {
+            namespace 'com.roomscanner.vr'
+            compileSdk 34
+            defaultConfig {
+                applicationId "com.roomscanner.vr"
+                minSdk 26
+                targetSdk 34
+                versionCode 1
+                versionName "1.0"
+            }
+        }
+        dependencies {
+            implementation 'androidx.core:core-ktx:1.12.0'
+        }
+        EOF
+
+        echo "gradleVersion=8.4" > gradle.wrapper.properties
+        gradle wrapper
+
+        # สั่งคอมไพล์สร้าง APK
+        ./gradlew assembleDebug
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: RoomScannerVR-APK
+        path: app/build/outputs/apk/debug/app-debug.apk
