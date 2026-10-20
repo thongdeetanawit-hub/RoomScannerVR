@@ -21,7 +21,6 @@ jobs:
     - name: Setup Android Project Files
       run: |
         mkdir -p app/src/main/java/com/roomscanner/vr
-        mkdir -p app/src/main/res/mipmap-hdpi
         
         # Manifest
         cat << 'EOF' > app/src/main/AndroidManifest.xml
@@ -29,11 +28,9 @@ jobs:
         <manifest xmlns:android="http://schemas.android.com/apk/res/android"
             package="com.roomscanner.vr">
             <uses-permission android:name="android.permission.INTERNET" />
-            <uses-permission android:name="android.permission.CAMERA" />
             <application
                 android:allowBackup="true"
                 android:label="RoomScannerVR"
-                android:supportsRtl="true"
                 android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
                 <activity
                     android:name=".MainActivity"
@@ -76,8 +73,7 @@ jobs:
                 mavenCentral()
             }
             dependencies {
-                classpath 'com.android.tools.build:gradle:8.1.1'
-                classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.21'
+                classpath 'com.android.tools.build:gradle:7.4.2'
             }
         }
         allprojects {
@@ -97,12 +93,9 @@ jobs:
         # app/build.gradle
         cat << 'EOF' > app/build.gradle
         apply plugin: 'com.android.application'
-        apply plugin: 'kotlin-android'
-
         android {
             namespace 'com.roomscanner.vr'
             compileSdk 33
-
             defaultConfig {
                 applicationId "com.roomscanner.vr"
                 minSdk 26
@@ -111,17 +104,12 @@ jobs:
                 versionName "1.0"
             }
         }
-
-        dependencies {
-            implementation 'androidx.core:core-ktx:1.10.1'
-        }
         EOF
 
-    - name: Setup Gradle Wrapper
-      run: gradle wrapper --gradle-version 8.0.2
-
-    - name: Build Debug APK
-      run: ./gradlew assembleDebug
+    - name: Download Gradle & Build APK
+      uses: gradle/gradle-build-action@v2
+      with:
+        arguments: assembleDebug
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
